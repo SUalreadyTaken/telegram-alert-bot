@@ -16,7 +16,7 @@ Bot is running without database.. so if you relaunch the bot the watchlist will 
 Change telegram.properties in src/main/resources
 * token = your telegram bot token
 * username = bot username
-* heroku.website = your heroku app domain url.. https://<your-app-name>.herokuapp.com/ 
+* heroku.website = your heroku app domain url.. https://your-app-name.herokuapp.com/ 
 
 
 
