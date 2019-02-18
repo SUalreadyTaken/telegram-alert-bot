@@ -1,0 +1,1 @@
+web: java -jar target/telegram-alert-bot-1.0.jar
