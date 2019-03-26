@@ -1,10 +1,11 @@
 package com.su.Runnable;
 
-import com.su.AlertBot;
 import com.su.Model.MessageToSend;
 import com.su.Model.Price;
+import com.su.Model.PriceWatchList;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,13 +20,20 @@ public class CheckPrice implements Runnable {
     @Value("${bitmex}")
     private String MEX;
 
-    private String JSON_STRING;
     private int EVERY_MINUTE = 0;
     private double PRICE = 0;
 
     private Price price;
-    private AlertBot alertBot;
-    private List<MessageToSend> messageToSendList = new ArrayList<>();
+    private MessageToSend messageToSend;
+    private PriceWatchList priceWatchList;
+
+    @Autowired
+    public CheckPrice(Price price, MessageToSend messageToSend, PriceWatchList priceWatchList) {
+        this.price = price;
+        this.messageToSend = messageToSend;
+        this.priceWatchList = priceWatchList;
+    }
+
 
     @Override
     public void run() {
@@ -34,7 +42,7 @@ public class CheckPrice implements Runnable {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.connect();
 
-            JSON_STRING = new Scanner(connection.getInputStream(), "UTF-8").next();
+            String JSON_STRING = new Scanner(connection.getInputStream(), "UTF-8").next();
 
             JSONArray jsonArray = new JSONArray(JSON_STRING);
             JSONObject jsonObject = (JSONObject) jsonArray.get(0);
@@ -55,31 +63,25 @@ public class CheckPrice implements Runnable {
                 System.out.println("Got new price.. will set it >> " + newPrice);
                 price.setPrice(newPrice);
 
-                Iterator watchListPriceIterator = alertBot.getPriceWatchList().getPrices().keySet().iterator();
+                Iterator priceListIterator = priceWatchList.getPrices().keySet().iterator();
                 // go through watchList
-                while (watchListPriceIterator.hasNext()) {
-                    Double priceOnWatchList = (Double) watchListPriceIterator.next();
+                while (priceListIterator.hasNext()) {
+                    Double tmpPrice = (Double) priceListIterator.next();
                     // if price on watchlist equals or is between current and old btc price
-                    if (Objects.equals(priceOnWatchList, newPrice)
-                            || (isBetween(newPrice, PRICE, priceOnWatchList) && PRICE != 0)) {
+                    if (Objects.equals(tmpPrice, newPrice) || (isBetween(newPrice, PRICE, tmpPrice) && PRICE != 0)) {
                         System.out.println("NEED to send alert on price >> " + newPrice);
                         // add all chatIds to sendList
-                        for (Long chatId: alertBot.getPriceWatchList().getPrices().get(priceOnWatchList)) {
-                            String messageString;
+                        for (Long chatId : priceWatchList.getPrices().get(tmpPrice)) {
+                            String text;
                             if (PRICE > newPrice) {
-                                messageString = "ALERT price fell below >> " + priceOnWatchList;
+                                text = "ALERT price fell below >> " + tmpPrice;
                             } else {
-                                messageString = "ALERT price rose above >> " + priceOnWatchList;
+                                text = "ALERT price rose above >> " + tmpPrice;
                             }
-                            System.out.println("Sending alert to >> " + chatId + " with text >> " + messageString);
-                            messageToSendList.add(new MessageToSend(chatId, messageString));
-
-                            // removes the price from ChatWatchlist
-                            alertBot.getChatWatchList().removePriceFromChatId(chatId,priceOnWatchList);
+                            System.out.println("Sending alert to " + chatId + " with text >> " + text);
+                            messageToSend.addMessage(chatId, text);
                         }
-                        // all messages added to sendList.. no need for that price on watchlist..remove it
-                        // removes key(price) from priceWatchList
-                        watchListPriceIterator.remove();
+                        priceListIterator.remove();
                     }
                 }
             }
@@ -95,29 +97,5 @@ public class CheckPrice implements Runnable {
 
     private boolean isBetween(double a, double b, double c) {
         return b > a ? c > a && c < b : c > b && c < a;
-    }
-
-    public Price getPrice() {
-        return price;
-    }
-
-    public void setPrice(Price price) {
-        this.price = price;
-    }
-
-    public AlertBot getAlertBot() {
-        return alertBot;
-    }
-
-    public void setAlertBot(AlertBot alertBot) {
-        this.alertBot = alertBot;
-    }
-
-    public List<MessageToSend> getMessageToSendList() {
-        return messageToSendList;
-    }
-
-    public void setMessageToSendList(List<MessageToSend> messageToSendList) {
-        this.messageToSendList = messageToSendList;
     }
 }

@@ -11,16 +11,10 @@ Checks bitmex btc price and sends a message when price reaches/passes certain va
 
 ## Setup
 
-Bot is running without database.. so if you relaunch the bot the watchlist will be empty
+Change application.properties in src/main/resources  
 
-Change telegram.properties in src/main/resources
 * token = your telegram bot token
 * username = bot username
-* heroku.website = your heroku app domain url.. https://<your-app-name>.herokuapp.com/ 
+* heroku.website = your heroku app domain url.. https://your-app-name.herokuapp.com/  
 
-
-
-
-## Todo
-
-* Integrate with database  
+ 

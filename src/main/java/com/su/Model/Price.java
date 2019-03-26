@@ -1,5 +1,8 @@
 package com.su.Model;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class Price {
 
     private double price;
