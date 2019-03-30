@@ -3,14 +3,10 @@ package com.su.Model;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-/**
- * Used in CheckPrice for getting chatIds of given price to send messages to
- * <p>
- * Price, List<ChatId>
- * <p>
- * Map<Double, List<Long>>
- */
+
 @Component
 public class PriceWatchList {
 
@@ -36,7 +32,7 @@ public class PriceWatchList {
                 this.prices.get(price).add(chatId);
             }
         } else {
-            this.prices.put(price, new ArrayList<>(Collections.singletonList(chatId)));
+            this.prices.put(price, Stream.of(chatId).collect(Collectors.toList()));
         }
 
     }
