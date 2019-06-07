@@ -63,16 +63,17 @@ public class CheckPrice implements Runnable {
                 System.out.println("Got new price.. will set it >> " + newPrice);
                 price.setPrice(newPrice);
 
-                Iterator priceListIterator = priceWatchList.getPrices().keySet().iterator();
                 // go through watchList
-                while (priceListIterator.hasNext()) {
-                    Double tmpPrice = (Double) priceListIterator.next();
+                for (Double tmpPrice : priceWatchList.getPrices().keySet()) {
                     // if price on watchlist equals or is between current and old btc price
                     if (Objects.equals(tmpPrice, newPrice) || (isBetween(newPrice, PRICE, tmpPrice) && PRICE != 0)) {
                         System.out.println("NEED to send alert on price >> " + newPrice);
+                        // chatIdsList
+                        Iterator chatIdsIterator = priceWatchList.getPrices().get(tmpPrice).iterator();
                         // add all chatIds to sendList
-                        for (Long chatId : priceWatchList.getPrices().get(tmpPrice)) {
+                        while (chatIdsIterator.hasNext()) {
                             String text;
+                            Long chatId = (Long) chatIdsIterator.next();
                             if (PRICE > newPrice) {
                                 text = "ALERT price fell below >> " + tmpPrice;
                             } else {
@@ -80,10 +81,12 @@ public class CheckPrice implements Runnable {
                             }
                             System.out.println("Sending alert to " + chatId + " with text >> " + text);
                             messageToSend.addMessage(chatId, text);
+                            chatIdsIterator.remove();
                         }
-                        priceListIterator.remove();
                     }
                 }
+                // remove empty keys
+                priceWatchList.getPrices().entrySet().removeIf(price -> price.getValue().isEmpty());
             }
 
             PRICE = newPrice;

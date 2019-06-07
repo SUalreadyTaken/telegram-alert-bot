@@ -10,6 +10,7 @@ import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.annotation.PostConstruct;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,12 +32,12 @@ public class Init {
         this.executeMessages = executeMessages;
         this.preventIdling = preventIdling;
         this.jsonManagement = jsonManagement;
-        start();
     }
 
     public Init() {
     }
 
+    @PostConstruct
     public void start() {
         TelegramBotsApi botsApi = new TelegramBotsApi();
 
@@ -52,7 +53,7 @@ public class Init {
         // read data from json to priceWatchList
         jsonManagement.priceWatchListSetup();
 
-        // Can use @Scheduled
+        // Can/Could use @Scheduled on each class..
 
         // bitmex not logged in users request limit is 150 per 3 min.. so check every 3 sec to be safe.. min 1.2sec
         ScheduledExecutorService checkPriceExecutor = Executors.newScheduledThreadPool(1);

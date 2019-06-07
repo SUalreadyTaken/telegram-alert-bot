@@ -50,9 +50,10 @@ public class PriceWatchList {
                     }
                 }
                 // remove price.. wont be kept with empty chatId list
-                if (this.prices.get(price).isEmpty()) {
-                    this.prices.remove(price);
-                }
+                // todo do i need it ? CheckPrice already removes keys with empty list
+//                if (this.prices.get(price).isEmpty()) {
+//                    this.prices.remove(price);
+//                }
             }
         }
     }
