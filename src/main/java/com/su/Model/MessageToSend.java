@@ -15,16 +15,17 @@ public class MessageToSend {
         messageList = new ArrayList<>();
     }
 
-    public void addMessage(Long chatId, String text) {
+    public void addMessage(int chatId, String text) {
         messageList.add(new Message(chatId, text));
     }
 
     public void removeMessage(Message message) {
         Iterator messageListIterator = messageList.iterator();
         while (messageListIterator.hasNext()) {
-            Message tmpMessage = (Message) messageListIterator.next();
-            if (tmpMessage.equals(message)) {
+//            Message tmpMessage = (Message) messageListIterator.next();
+            if (messageListIterator.next().equals(message)) {
                 messageListIterator.remove();
+                break;
             }
         }
     }

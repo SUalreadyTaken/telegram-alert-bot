@@ -1,72 +1,76 @@
 package com.su;
 
-import com.su.Helpers.JsonManagement;
-import com.su.Runnable.CheckPrice;
-import com.su.Runnable.ExecuteMessages;
-import com.su.Runnable.PreventIdling;
+import com.su.Model.PriceData;
+import com.su.Model.PriceWatchList;
+import com.su.Repository.PriceDataRepository;
+import com.su.Service.IdleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.BotSession;
 
 import javax.annotation.PostConstruct;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 @Component
 public class Init {
 
-    private AlertBot alertBot;
-    private CheckPrice checkPrice;
-    private ExecuteMessages executeMessages;
-    private PreventIdling preventIdling;
-    private JsonManagement jsonManagement;
+	@Value("${switchapp}")
+	private boolean switchApp;
 
-    @Autowired
-    public Init(AlertBot alertBot, CheckPrice checkPrice, ExecuteMessages executeMessages,
-                PreventIdling preventIdling, JsonManagement jsonManagement) {
-        this.alertBot = alertBot;
-        this.checkPrice = checkPrice;
-        this.executeMessages = executeMessages;
-        this.preventIdling = preventIdling;
-        this.jsonManagement = jsonManagement;
-    }
+	private final AlertBot alertBot;
+	private final PriceDataRepository priceDataRepository;
+	private final PriceWatchList priceWatchList;
+	private final TelegramBotsApi botsApi;
+	private final IdleService idleService;
+	private BotSession botSession;
+	private boolean running = true;
 
-    public Init() {
-    }
+	@Autowired
+	public Init(AlertBot alertBot, PriceDataRepository priceDataRepository, PriceWatchList priceWatchList, IdleService idleService) {
+		this.alertBot = alertBot;
+		this.priceDataRepository = priceDataRepository;
+		this.priceWatchList = priceWatchList;
+		this.idleService = idleService;
+		this.botsApi = new TelegramBotsApi();
+	}
 
-    @PostConstruct
-    public void start() {
-        TelegramBotsApi botsApi = new TelegramBotsApi();
+	@PostConstruct
+	private void start() {
+		//TelegramBotsApi botsApi = new TelegramBotsApi();
 
-        //register telegram bot
-        try {
-            botsApi.registerBot(alertBot);
-            System.out.println("Register bot success !\n" + "token >> " +
-                    alertBot.getBotToken() + "\nusername >> " + alertBot.getBotUsername());
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
+		if (!switchApp || idleService.getAlternativeBoolean()) {
+			//register telegram bot
+			try {
+				this.botSession = botsApi.registerBot(alertBot);
+				System.out.println("Register bot success !\n" + "token >> " +
+										   alertBot.getBotToken() + "\nusername >> " + alertBot.getBotUsername());
+			} catch (TelegramApiException e) {
+				e.printStackTrace();
+			}
 
-        // read data from json to priceWatchList
-        jsonManagement.priceWatchListSetup();
+			List<PriceData> priceDataList = priceDataRepository.findAll();
+			if (!priceDataList.isEmpty()) {
+				for (PriceData priceData : priceDataList) {
+					for (Integer chatId : priceData.getChatIds()) {
+						this.priceWatchList.addChatIdToPrice(priceData.getPrice(), chatId);
+					}
+				}
+			}
+		}
 
-        // Can/Could use @Scheduled on each class..
+	}
 
-        // bitmex not logged in users request limit is 150 per 3 min.. so check every 3 sec to be safe.. min 1.2sec
-        ScheduledExecutorService checkPriceExecutor = Executors.newScheduledThreadPool(1);
-        checkPriceExecutor.scheduleAtFixedRate(checkPrice, 0, 3, TimeUnit.SECONDS);
-
-        // send out messages
-        ScheduledExecutorService executeMessageExecutor = Executors.newScheduledThreadPool(1);
-        executeMessageExecutor.scheduleAtFixedRate(executeMessages, 0, 1, TimeUnit.SECONDS);
-
-        // ping your heroku app to keep it from going to sleep
-        ScheduledExecutorService preventIdlingExecutor = Executors.newScheduledThreadPool(1);
-        preventIdlingExecutor.scheduleAtFixedRate(preventIdling, 0, 5, TimeUnit.MINUTES);
-
-    }
-
+	void registerOrStop() {
+		if (running) {
+			System.out.println("bot is running going to stop it");
+			botSession.stop();
+		} else {
+			System.out.println("bot is stopped will start it again");
+			botSession.start();
+		}
+		running = !running;
+	}
 }

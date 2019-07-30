@@ -4,6 +4,7 @@ import com.su.AlertBot;
 import com.su.Model.Message;
 import com.su.Model.MessageToSend;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -11,10 +12,10 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.util.Iterator;
 
 @Component
-public class ExecuteMessages implements Runnable {
+public class ExecuteMessages {
 
-    private MessageToSend messageToSend;
-    private AlertBot alertBot;
+    private final MessageToSend messageToSend;
+    private final AlertBot alertBot;
     private int MESSAGES_SENT = 0;
 
     @Autowired
@@ -23,7 +24,7 @@ public class ExecuteMessages implements Runnable {
         this.alertBot = alertBot;
     }
 
-    @Override
+    @Scheduled(fixedDelay = 1000)
     public void run() {
         if (!messageToSend.getMessageList().isEmpty()) {
             Iterator messageListIterator = messageToSend.getMessageList().iterator();

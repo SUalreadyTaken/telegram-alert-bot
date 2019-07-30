@@ -10,18 +10,18 @@ import java.util.stream.Stream;
 @Component
 public class PriceWatchList {
 
+    // price and list of ids
+    private Map<Double, List<Integer>> prices = new LinkedHashMap<>();
 
-    private Map<Double, List<Long>> prices = new LinkedHashMap<>();
-
-    public Map<Double, List<Long>> getPrices() {
+    public Map<Double, List<Integer>> getPrices() {
         return prices;
     }
 
-    public void setPrices(Map<Double, List<Long>> prices) {
+    public void setPrices(Map<Double, List<Integer>> prices) {
         this.prices = prices;
     }
 
-    public void addChatIdToPrice(Double price, Long chatId) {
+    public void addChatIdToPrice(Double price, Integer chatId) {
         if (this.prices == null) {
             this.prices = new LinkedHashMap<>();
         }
@@ -32,28 +32,32 @@ public class PriceWatchList {
                 this.prices.get(price).add(chatId);
             }
         } else {
-            this.prices.put(price, Stream.of(chatId).collect(Collectors.toList()));
+           this.prices.put(price, Stream.of(chatId).collect(Collectors.toList()));
         }
 
     }
 
-    public void removeChatIdFromPrice(Long chatId, Double price) {
+    public void removeChatIdFromPrice(Integer chatId, Double price) {
         if (this.prices != null) {
             if (this.prices.containsKey(price)) {
                 Iterator chatIdIterator = this.prices.get(price).iterator();
-                Long tmpChatId;
+//                int tmpChatId;
                 while (chatIdIterator.hasNext()) {
-                    tmpChatId = (Long) chatIdIterator.next();
-                    if (Objects.equals(tmpChatId, chatId)) {
+//                    tmpChatId = (int) chatIdIterator.next();
+                    if (Objects.equals(chatIdIterator.next(), chatId)) {
                         chatIdIterator.remove();
                         break;
                     }
                 }
-                // remove price.. wont be kept with empty chatId list
-                // todo do i need it ? CheckPrice already removes keys with empty list
-//                if (this.prices.get(price).isEmpty()) {
-//                    this.prices.remove(price);
-//                }
+                if (this.prices.get(price).isEmpty()) {
+                    Iterator priceIterator = this.prices.keySet().iterator();
+                    while (priceIterator.hasNext()) {
+                        if (Objects.equals(priceIterator.next(), price)) {
+                            priceIterator.remove();
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
