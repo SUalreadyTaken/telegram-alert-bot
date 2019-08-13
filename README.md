@@ -1,7 +1,7 @@
 # Telegram bot on heroku  
 # @BitmexAlert_bot on telegram  
 
-Simple telegram bitmex price alert bot  
+Simple telegram bitmex price alert bot using heroku and mongodb  
 Checks bitmex btc price and sends a message when price reaches users price on watchlist
 
 Can use 2 apps(main and alternative) if you don't have the extra 450h dyno hours to run 24/7
@@ -28,6 +28,40 @@ Change application.properties in src/main/resources
 * switchapp = false if you're using 1 app true if you're using 2  
 * spring.data.mongodb.uri = your mongodb uri
 * spring.data.mongodb.database = db name
+
+## Mongodb
+
+Need 2 collections
+
+### pricedata
+
+| Field   | Type    |
+| ------- | ------- |
+| price   | double  |
+| chatid  | array   |
+
+```json
+{
+  "_id":{"$oid":"5d3f3318da797200043632b6"},
+  "price":{"$numberDouble":"9200"},
+  "chatid":[{"$numberInt":"123"}],
+  "_class":"com.su.Model.PriceData"
+  }
+```
+
+### idle
+
+|Field        | Type    |
+| ----------- | ------- |
+| alternative | boolean |
+
+```json
+{
+  "_id":{"$oid":"5d35e1da1c9d44000047cf99"},
+  "alternative":false,
+  "_class":"com.su.Model.Idle"
+  }
+```
 
 
 # TODO
