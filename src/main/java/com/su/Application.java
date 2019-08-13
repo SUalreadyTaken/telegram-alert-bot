@@ -7,25 +7,24 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Controller;
 import org.telegram.telegrambots.ApiContextInitializer;
 
+import javax.annotation.PostConstruct;
+
 @Controller
 @SpringBootApplication
 @EnableScheduling
 public class Application implements CommandLineRunner {
 
     public static void main(String[] args) {
-        ApiContextInitializer.init();
         SpringApplication.run(Application.class, args);
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
 
     }
 
-//    @RequestMapping("/")
-//    String index() {
-//        return "index";
-//    }
-
-
+    @PostConstruct
+    public void start() {
+        ApiContextInitializer.init();
+    }
 }

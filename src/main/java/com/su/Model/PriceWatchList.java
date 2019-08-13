@@ -10,8 +10,8 @@ import java.util.stream.Stream;
 @Component
 public class PriceWatchList {
 
-    // price and list of ids
-    private Map<Double, List<Integer>> prices = new LinkedHashMap<>();
+    private Map<Double, List<Integer>> prices = Collections.synchronizedMap(new LinkedHashMap<>());
+
 
     public Map<Double, List<Integer>> getPrices() {
         return prices;
@@ -50,13 +50,14 @@ public class PriceWatchList {
                     }
                 }
                 if (this.prices.get(price).isEmpty()) {
-                    Iterator priceIterator = this.prices.keySet().iterator();
-                    while (priceIterator.hasNext()) {
-                        if (Objects.equals(priceIterator.next(), price)) {
-                            priceIterator.remove();
-                            break;
-                        }
-                    }
+                    this.prices.remove(price);
+//                    Iterator priceIterator = this.prices.keySet().iterator();
+//                    while (priceIterator.hasNext()) {
+//                        if (Objects.equals(priceIterator.next(), price)) {
+//                            priceIterator.remove();
+//                            break;
+//                        }
+//                    }
                 }
             }
         }

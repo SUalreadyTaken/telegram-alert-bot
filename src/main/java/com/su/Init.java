@@ -39,9 +39,7 @@ public class Init {
 
 	@PostConstruct
 	private void start() {
-		//TelegramBotsApi botsApi = new TelegramBotsApi();
-
-		if (!switchApp || idleService.getAlternativeBoolean()) {
+		if (!switchApp || !idleService.getAlternativeBoolean()) {
 			//register telegram bot
 			try {
 				this.botSession = botsApi.registerBot(alertBot);

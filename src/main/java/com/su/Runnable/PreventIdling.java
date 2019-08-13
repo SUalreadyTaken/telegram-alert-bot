@@ -40,7 +40,7 @@ public class PreventIdling {
     public void run() {
         //if this app is the main one then alternative be false to keep it from idling.. vice versa for the alternative app
         //if switchApp is false it will keep the app from idling
-        if (!switchApp || alternative) {
+        if (!switchApp || !alternative) {
             HttpURLConnection connection = null;
             try {
                 URL u = new URL(herokuWebsite);

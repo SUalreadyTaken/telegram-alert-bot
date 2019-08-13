@@ -2,18 +2,14 @@ package com.su.Model;
 
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 @Component
 public class MessageToSend {
 
-    private List<Message> messageList;
+    private List<Message> messageList = Collections.synchronizedList(new ArrayList<>());
 
-    public MessageToSend() {
-        messageList = new ArrayList<>();
-    }
+    public MessageToSend() {}
 
     public void addMessage(int chatId, String text) {
         messageList.add(new Message(chatId, text));

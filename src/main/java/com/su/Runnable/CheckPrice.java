@@ -1,9 +1,6 @@
 package com.su.Runnable;
 
-import com.su.Model.MessageToSend;
-import com.su.Model.Price;
-import com.su.Model.PriceWatchList;
-import com.su.Service.PriceDataService;
+import com.su.Model.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,19 +23,21 @@ public class CheckPrice {
 
 	private int EVERY_MINUTE = 0;
 	private double oldPrice = 0;
-	private long lastRequestTime = 0;
+	private double highPrice = 0;
+	private double lowPrice = 0;
+	private long lastRequestTime = System.currentTimeMillis();
 
 	private final Price price;
 	private final MessageToSend messageToSend;
 	private final PriceWatchList priceWatchList;
-	private final PriceDataService priceDataService;
+	private final DBCommands dbCommands;
 
 	@Autowired
-	public CheckPrice(Price price, MessageToSend messageToSend, PriceWatchList priceWatchList, PriceDataService priceDataService) {
+	public CheckPrice(Price price, MessageToSend messageToSend, PriceWatchList priceWatchList, DBCommands dbCommands) {
 		this.price = price;
 		this.messageToSend = messageToSend;
 		this.priceWatchList = priceWatchList;
-		this.priceDataService = priceDataService;
+		this.dbCommands = dbCommands;
 	}
 
 	@PostConstruct
@@ -48,13 +47,11 @@ public class CheckPrice {
 		checkWatchlist(oldPrice);
 	}
 
-	@Scheduled(fixedDelay = 2000)
+	@Scheduled(fixedDelay = 100)
 	public void run() {
 		// Rate limit is 30 per 1 min
-		// usually thread runs every 2sec but occasionally its few ms faster and it will add up
-		// so check to be safe
 		try {
-			TimeUnit.MILLISECONDS.sleep((System.currentTimeMillis() - lastRequestTime) - 2000);
+			TimeUnit.MILLISECONDS.sleep(2000 - (System.currentTimeMillis() - lastRequestTime));
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.out.println("Error in CheckPrice.run failed to sleep");
@@ -67,49 +64,61 @@ public class CheckPrice {
 		if (oldPrice != 0 && currentPrice != 0 && oldPrice != currentPrice) {
 			checkWatchlist(currentPrice);
 		}
-	}
-
-	/**
-	 * Checks if it's necessary to send out alerts.
-	 * If so
-	 * Adds prices to MessageToSend
-	 * Removes prices from watchlist and database
-	 *
-	 * @param currentPrice Price to check against watchlist
-	 */
-	private void checkWatchlist(double currentPrice) {
-		price.setPrice(currentPrice);
-		// go through watchList
-		for (Double watchlistPrice : priceWatchList.getPrices().keySet()) {
-			// if price on the watchlist is equals or in between current and old btc price
-			if (Objects.equals(watchlistPrice, currentPrice) || (isBetween(currentPrice, oldPrice, watchlistPrice) && oldPrice != 0)) {
-				// chatIdsList
-				Iterator chatIdsIterator = priceWatchList.getPrices().get(watchlistPrice).iterator();
-				List<Integer> chatIdsToRemoveList = new ArrayList<>();
-				// add all chatIds to sendList
-				while (chatIdsIterator.hasNext()) {
-					String text;
-					int chatId = (int) chatIdsIterator.next();
-					if (oldPrice > currentPrice) {
-						text = "ALERT price fell below >> " + watchlistPrice;
-					} else {
-						text = "ALERT price rose above >> " + watchlistPrice;
-					}
-					System.out.println("Sending alert to " + chatId + " with text >> " + text);
-					messageToSend.addMessage(chatId, text);
-					chatIdsToRemoveList.add(chatId);
-					chatIdsIterator.remove();
-				}
-				priceDataService.removeOrDelete(watchlistPrice, chatIdsToRemoveList);
-			}
-		}
-		// remove empty keys
-		priceWatchList.getPrices().entrySet().removeIf(price -> price.getValue().isEmpty());
 		oldPrice = currentPrice;
 	}
 
+	public void checkWatchlist(double currentPrice) {
+		price.setPrice(currentPrice);
+		Set<Map.Entry<Double, List<Integer>>> tmpPriceWatchlist = priceWatchList.getPrices().entrySet();
+		Map<Double, List<Integer>> dbPricesToRemove = new LinkedHashMap<>();
+		List<Message> messageList = new ArrayList<>();
+
+		synchronized (priceWatchList.getPrices()) {
+			Iterator<Map.Entry<Double, List<Integer>>> watchlistEntry = tmpPriceWatchlist.iterator();
+			while (watchlistEntry.hasNext()) {
+				Map.Entry<Double, List<Integer>> tmpWatchlistEntry = watchlistEntry.next();
+				double priceToCheck = tmpWatchlistEntry.getKey();
+				if (isBetween(lowPrice, highPrice, priceToCheck)) {
+					dbPricesToRemove.put(priceToCheck, tmpWatchlistEntry.getValue());
+					for (Integer chatId : tmpWatchlistEntry.getValue()) {
+						String text;
+						if (oldPrice > currentPrice) {
+							text = "ALERT price fell below >> " + priceToCheck;
+						} else {
+							text = "ALERT price rose above >> " + priceToCheck;
+						}
+						System.out.println("Sending alert to " + chatId + " with text >> " + text);
+						messageList.add(new Message(chatId, text));
+					}
+					watchlistEntry.remove();
+				}
+			}
+		}
+
+		if (!dbPricesToRemove.isEmpty()) {
+			synchronized (dbCommands.getRemoveChatIdFromPrice()) {
+				for (Map.Entry<Double, List<Integer>> entry : dbPricesToRemove.entrySet()) {
+					if (dbCommands.getRemoveChatIdFromPrice().containsKey(entry.getKey())) {
+						dbCommands.getRemoveChatIdFromPrice().get(entry.getKey()).addAll(entry.getValue());
+					}
+					dbCommands.getRemoveChatIdFromPrice().put(entry.getKey(), entry.getValue());
+				}
+			}
+			synchronized (messageToSend.getMessageList()) {
+				for (Message message : messageList) {
+					messageToSend.getMessageList().add(message);
+				}
+			}
+		}
+
+	}
+
 	/**
-	 * @return Current bitmex xbt price
+	 * Gets bitmex btc price.
+	 * Returns 0 if response code is 429 meaning request limit reached (will sleep for 60sec)
+	 * and if api returns 502 which happens from time to time.
+	 *
+	 * @return btc price
 	 */
 	private double getPrice() {
 		double newPrice = 0;
@@ -123,6 +132,15 @@ public class CheckPrice {
 			if (connection.getResponseCode() == 429) {
 				System.out.println("Limit reached sleep 60 sec");
 				TimeUnit.MILLISECONDS.sleep(60000);
+				connection.disconnect();
+				return 0;
+			}
+
+			// bitmex api gives 502 from time to time
+			if (connection.getResponseCode() == 502) {
+				System.out.println("502");
+				connection.disconnect();
+				return 0;
 			}
 
 			String JSON_STRING = new Scanner(connection.getInputStream(), "UTF-8").next();
@@ -130,7 +148,9 @@ public class CheckPrice {
 
 			if (!jsonArray.isEmpty()) {
 				JSONObject jsonObject = (JSONObject) jsonArray.get(0);
-				newPrice = Double.parseDouble(jsonObject.get("price").toString());
+				newPrice = Double.parseDouble(jsonObject.get("close").toString());
+				highPrice = Double.parseDouble(jsonObject.get("high").toString());
+				lowPrice = Double.parseDouble(jsonObject.get("low").toString());
 				EVERY_MINUTE++;
 				if (EVERY_MINUTE == 30) {
 					System.out.println("Reminder Current price >> " + newPrice);
@@ -146,10 +166,10 @@ public class CheckPrice {
 	}
 
 	/**
-	 * Check if C is between A and B
+	 * Check if C is between or equal to A and B
 	 */
 	private boolean isBetween(double a, double b, double c) {
-		return b > a ? c > a && c < b : c > b && c < a;
+		return b >= a ? c >= a && c <= b : c >= b && c <= a;
 	}
 
 }
