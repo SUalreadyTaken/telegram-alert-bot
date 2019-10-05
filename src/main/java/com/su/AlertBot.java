@@ -13,16 +13,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.primitives.Ints.asList;
-
 @Component
 public class AlertBot extends TelegramLongPollingBot {
 
 	private final Price price;
 	private final PriceWatchList priceWatchList;
 	private final MessageToSend messageToSend;
-//	private final PriceDataService priceDataService;
-	private final DBCommands dbCommands;
+	private final DBCommandsQueue dbCommandsQueue;
 
 	@Value("${telegram.token}")
 	private String token;
@@ -31,11 +28,11 @@ public class AlertBot extends TelegramLongPollingBot {
 	private String username;
 
 	@Autowired
-	public AlertBot(Price price, PriceWatchList priceWatchList, MessageToSend messageToSend, DBCommands dbCommands) {
+	public AlertBot(Price price, PriceWatchList priceWatchList, MessageToSend messageToSend, DBCommandsQueue dbCommandsQueue) {
 		this.price = price;
 		this.priceWatchList = priceWatchList;
 		this.messageToSend = messageToSend;
-		this.dbCommands = dbCommands;
+		this.dbCommandsQueue = dbCommandsQueue;
 	}
 
 	@Override
@@ -97,8 +94,10 @@ public class AlertBot extends TelegramLongPollingBot {
 			}
 
 			if (!respondMessage.toString().isEmpty()) {
-				synchronized (messageToSend.getMessageList())  {
-					messageToSend.addMessage(chatId, respondMessage.toString());
+				try {
+					messageToSend.getMessageQueue().put(new Message(chatId, respondMessage.toString()));
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
 			} else {
 				System.out.println("Respond message is empty");
@@ -131,7 +130,6 @@ public class AlertBot extends TelegramLongPollingBot {
 	}
 
 	private void addToWatchlist(Map<Double, List<Integer>> watchList, List<String> priceList, int chatId, StringBuilder respondMessage) {
-		Map<Double, Integer> addChatIdToWatchlist = new HashMap<>();
 		for (String s : priceList) {
 			if (NumberUtils.isParsable(s) && Double.valueOf(s) > 0) {
 				Double tmpPrice = Double.valueOf(s);
@@ -142,14 +140,11 @@ public class AlertBot extends TelegramLongPollingBot {
 							if (!watchList.get(tmpPrice).contains(chatId)) {
 								add(chatId, tmpPrice);
 								respondMessage.append("Added ").append(tmpPrice).append(" to watchlist \n");
-//								priceDataService.addToExisting(tmpPrice, chatId);
 							}
 						} else {
 							add(chatId, tmpPrice);
-//							priceDataService.addNew(tmpPrice, chatId);
 							respondMessage.append("Added ").append(tmpPrice).append(" to watchlist \n");
 						}
-						addChatIdToWatchlist.put(tmpPrice, chatId);
 					} else {
 						respondMessage.append(s).append(" out of range 0 - ").append(tmpPrice * 2).append("\n");
 					}
@@ -160,54 +155,41 @@ public class AlertBot extends TelegramLongPollingBot {
 				respondMessage.append("[").append(s).append("]").append(" not a number (must use . instead of , ) or is negative \n");
 			}
 		}
-		if (!addChatIdToWatchlist.isEmpty()) {
-			synchronized (dbCommands.getAddPriceToChatIdWatchlist()) {
-				for (Map.Entry<Double, Integer> entry : addChatIdToWatchlist.entrySet()) {
-					if (dbCommands.getAddPriceToChatIdWatchlist().containsKey(entry.getKey())) {
-						dbCommands.getAddPriceToChatIdWatchlist().get(entry.getKey()).add(entry.getValue());
-					} else {
-						dbCommands.getAddPriceToChatIdWatchlist().put(entry.getKey(), Stream.of(entry.getValue()).collect(Collectors.toList()));
-					}
-				}
-			}
-		}
 	}
 
 	private void removeFromWatchlist(Map<Double, List<Integer>> watchList, List<String> priceList, int chatId,
 									 StringBuilder respondMessage) {
-		Map<Double, Integer> removeChatIdFromWatchlist = new HashMap<>();
 		for (String s : priceList) {
 			if (StringUtils.isNumeric(s) && Double.valueOf(s) > 0) {
 				Double tmpPrice = Double.valueOf(s);
 				if (watchList.containsKey(tmpPrice) && watchList.get(tmpPrice).contains(chatId)) {
 					remove(chatId, tmpPrice);
-					removeChatIdFromWatchlist.put(tmpPrice, chatId);
 					respondMessage.append("Removed ").append(tmpPrice).append(" from watchlist\n");
 				}
 			} else {
 				respondMessage.append("[").append(s).append("]").append(" not a number (must use . instead of , ) or is negative \n");
 			}
 		}
-		if (!removeChatIdFromWatchlist.isEmpty()) {
-			synchronized (dbCommands.getRemovePriceFromChatIdWatchlist()) {
-				for (Map.Entry<Double, Integer> entry : removeChatIdFromWatchlist.entrySet()) {
-					if (dbCommands.getRemovePriceFromChatIdWatchlist().containsKey(entry.getKey())) {
-						dbCommands.getRemovePriceFromChatIdWatchlist().get(entry.getKey()).add(entry.getValue());
-					} else {
-						dbCommands.getRemovePriceFromChatIdWatchlist().put(entry.getKey(), Stream.of(entry.getValue()).collect(Collectors.toList()));
-					}
-				}
-			}
-		}
 	}
 
 	private void add(int chatId, Double price) {
 		this.priceWatchList.addChatIdToPrice(price, chatId);
+		try {
+			this.dbCommandsQueue.getDbCommandsQueue().put(new DBCommand(DBCommandType.ADDPRICE, price, Collections.singletonList(chatId)));
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		System.out.println("*Add* added " + price + " to " + chatId + " watchlist");
 	}
 
 	private void remove(int chatId, Double price) {
 		this.priceWatchList.removeChatIdFromPrice(chatId, price);
+		try {
+			this.dbCommandsQueue.getDbCommandsQueue().put(new DBCommand(DBCommandType.REMOVEPRICE, price,
+																		Collections.singletonList(chatId)));
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		System.out.println("*Remove* Removed " + price + " from " + chatId + " watchlist");
 	}
 

@@ -2,35 +2,22 @@ package com.su.Model;
 
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Component
 public class MessageToSend {
 
-    private List<Message> messageList = Collections.synchronizedList(new ArrayList<>());
+    private BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
 
     public MessageToSend() {}
 
-    public void addMessage(int chatId, String text) {
-        messageList.add(new Message(chatId, text));
+    public BlockingQueue<Message> getMessageQueue() {
+        return messageQueue;
     }
 
-    public void removeMessage(Message message) {
-        Iterator messageListIterator = messageList.iterator();
-        while (messageListIterator.hasNext()) {
-//            Message tmpMessage = (Message) messageListIterator.next();
-            if (messageListIterator.next().equals(message)) {
-                messageListIterator.remove();
-                break;
-            }
-        }
+    public void setMessageQueue(BlockingQueue<Message> messageQueue) {
+        this.messageQueue = messageQueue;
     }
 
-    public List<Message> getMessageList() {
-        return messageList;
-    }
-
-    public void setMessageList(List<Message> messageList) {
-        this.messageList = messageList;
-    }
 }

@@ -1,59 +1,49 @@
 package com.su.Runnable;
 
-import com.su.Model.DBCommands;
+import com.su.Model.DBCommand;
 import com.su.Service.PriceDataService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
-@Component
-public class DBController {
+public class DBController implements Runnable {
 
-	private final DBCommands dbCommands;
+	private BlockingQueue<DBCommand> commandsQueue;
 	private final PriceDataService priceDataService;
 
-	@Autowired
-	public DBController(DBCommands dbCommands, PriceDataService priceDataService) {
-		this.dbCommands = dbCommands;
+	public DBController(BlockingQueue<DBCommand> commandsQueue, PriceDataService priceDataService) {
+		this.commandsQueue = commandsQueue;
 		this.priceDataService = priceDataService;
 	}
 
-	@Scheduled(fixedDelay = 5000)
+	@Override
 	public void run() {
-
-		synchronized (dbCommands.getAddPriceToChatIdWatchlist()) {
-			if (!dbCommands.getAddPriceToChatIdWatchlist().isEmpty()) {
-				for (Map.Entry<Double, List<Integer>> doubleListEntry : dbCommands.getAddPriceToChatIdWatchlist().entrySet()) {
-					for (Integer chatId : doubleListEntry.getValue()) {
-						priceDataService.add(doubleListEntry.getKey(), chatId);
-					}
+		while (true) {
+			try {
+				DBCommand dbCommand = commandsQueue.take();
+				switch (dbCommand.getDbCommandType()) {
+					case ADDPRICE:
+						priceDataService.add(dbCommand.getPrice(), dbCommand.getChatIds().get(0));
+						break;
+					case REMOVEPRICE:
+						priceDataService.removeChatId(dbCommand.getPrice(), dbCommand.getChatIds().get(0));
+						break;
+					case REMOVECHATIDS:
+						priceDataService.removeChatIdsFromPrice(dbCommand.getPrice(), dbCommand.getChatIds());
+						break;
+					default:
+						break;
 				}
-				dbCommands.getAddPriceToChatIdWatchlist().clear();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
+	}
 
-		synchronized (dbCommands.getRemovePriceFromChatIdWatchlist()) {
-			if (!dbCommands.getRemovePriceFromChatIdWatchlist().isEmpty()) {
-				for (Map.Entry<Double, List<Integer>> doubleListEntry : dbCommands.getRemovePriceFromChatIdWatchlist().entrySet()) {
-					for (Integer chatId : doubleListEntry.getValue()) {
-						priceDataService.removeChatId(doubleListEntry.getKey(), chatId);
-					}
-				}
-				dbCommands.getRemovePriceFromChatIdWatchlist().clear();
-			}
-		}
+	public BlockingQueue<DBCommand> getCommandsQueue() {
+		return commandsQueue;
+	}
 
-		synchronized (dbCommands.getRemoveChatIdFromPrice()) {
-			if (!dbCommands.getRemoveChatIdFromPrice().isEmpty()) {
-				for (Map.Entry<Double, List<Integer>> doubleListEntry : dbCommands.getRemoveChatIdFromPrice().entrySet()) {
-					priceDataService.removeChatIdFromPrice(doubleListEntry.getKey(), doubleListEntry.getValue());
-				}
-				dbCommands.getRemoveChatIdFromPrice().clear();
-			}
-		}
-
+	public void setCommandsQueue(BlockingQueue<DBCommand> commandsQueue) {
+		this.commandsQueue = commandsQueue;
 	}
 }

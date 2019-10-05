@@ -78,8 +78,7 @@ public class Switch {
 		}
 	}
 
-	// switches to alternative app every sunday at 3 am
-	@Scheduled(cron = "0 45 10 * * TUE")
+	@Scheduled(cron = "0 0 4 * * WED")
 	private void switchApp() throws InterruptedException, IOException {
 		if (switchApp) {
 			// stop alertbot

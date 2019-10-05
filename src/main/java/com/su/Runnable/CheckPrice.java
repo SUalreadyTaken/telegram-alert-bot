@@ -30,14 +30,14 @@ public class CheckPrice {
 	private final Price price;
 	private final MessageToSend messageToSend;
 	private final PriceWatchList priceWatchList;
-	private final DBCommands dbCommands;
+	private final DBCommandsQueue dbCommandsQueue;
 
 	@Autowired
-	public CheckPrice(Price price, MessageToSend messageToSend, PriceWatchList priceWatchList, DBCommands dbCommands) {
+	public CheckPrice(Price price, MessageToSend messageToSend, PriceWatchList priceWatchList, DBCommandsQueue dbCommandsQueue) {
 		this.price = price;
 		this.messageToSend = messageToSend;
 		this.priceWatchList = priceWatchList;
-		this.dbCommands = dbCommands;
+		this.dbCommandsQueue = dbCommandsQueue;
 	}
 
 	@PostConstruct
@@ -96,17 +96,18 @@ public class CheckPrice {
 		}
 
 		if (!dbPricesToRemove.isEmpty()) {
-			synchronized (dbCommands.getRemoveChatIdFromPrice()) {
-				for (Map.Entry<Double, List<Integer>> entry : dbPricesToRemove.entrySet()) {
-					if (dbCommands.getRemoveChatIdFromPrice().containsKey(entry.getKey())) {
-						dbCommands.getRemoveChatIdFromPrice().get(entry.getKey()).addAll(entry.getValue());
-					}
-					dbCommands.getRemoveChatIdFromPrice().put(entry.getKey(), entry.getValue());
+			for (Map.Entry<Double, List<Integer>> entry : dbPricesToRemove.entrySet()) {
+				try {
+					dbCommandsQueue.getDbCommandsQueue().put(new DBCommand(DBCommandType.REMOVECHATIDS, entry.getKey(), entry.getValue()));
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
 			}
-			synchronized (messageToSend.getMessageList()) {
-				for (Message message : messageList) {
-					messageToSend.getMessageList().add(message);
+			for (Message message : messageList) {
+				try {
+					messageToSend.getMessageQueue().put(message);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
 			}
 		}

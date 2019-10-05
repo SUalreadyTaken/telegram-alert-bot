@@ -10,7 +10,6 @@ import org.junit.runner.RunWith;
 import org.mockito.*;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.io.*;
@@ -37,9 +36,9 @@ public class TestAlertBot {
 	private MessageToSend messageToSend;
 	@Spy
 	private Price price;
-	//need dbCommands DONT DELETE
+	//need dbCommandsQueue DONT DELETE
 	@Spy
-	private DBCommands dbCommands;
+	private DBCommandsQueue dbCommandsQueue;
 
 	private final UpdateToSend updateToSend = new UpdateToSend();
 
@@ -142,23 +141,20 @@ public class TestAlertBot {
 		assertNull(priceWatchList.getPrices().get(105.0));
 		assertEquals(priceWatchList.getPrices().size(), 3);
 		// 6 added 3 price alerts
-		assertEquals(messageToSend.getMessageList().size(), 9);
+		assertEquals(messageToSend.getMessageQueue().size(), 9);
 	}
 
 	/**
 	 * ExecuteMessages needs to sleep for 1 second if 30 messages are sent within 1 second
 	 */
 	@Test
-	public void executeMessages_Sleeps() throws InterruptedException {
-
-		List<SendMessage> sendMessageList = createSendMessageList(33);
+	public void executeMessages_Sleeps() {
 		long start = System.currentTimeMillis();
-		long startTimeReturned = start;
-		for (SendMessage sendMessage : sendMessageList) {
-			startTimeReturned = executeMessages.sleepIfNeeded(start, sendMessage);
+		ReflectionTestUtils.setField(executeMessages, "LAST_MESSAGE_SENT", start);
+		for (int i = 0; i < 33; i++) {
+			executeMessages.sleepIfNeeded();
 		}
 		assertTrue(System.currentTimeMillis() - start > 1000);
-		assertNotEquals(start, startTimeReturned);
 
 	}
 
@@ -166,31 +162,15 @@ public class TestAlertBot {
 	 * ExecuteMessages doesnt sleep and changes lastSendMessage if 1 second has passed.
 	 */
 	@Test
-	public void executeMessages_DoesntSleep() throws InterruptedException {
-
-		List<SendMessage> sendMessageList = createSendMessageList(10);
+	public void executeMessages_DoesntSleep() {
 		long start = System.currentTimeMillis();
-		long startTimeReturned = start;
-
-		for (SendMessage sendMessage : sendMessageList) {
-			startTimeReturned = executeMessages.sleepIfNeeded(start, sendMessage);
+		ReflectionTestUtils.setField(executeMessages, "LAST_MESSAGE_SENT", start);
+		for (int i = 0; i < 3; i++) {
+			executeMessages.sleepIfNeeded();
 		}
-
 		assertTrue(System.currentTimeMillis() - start < 1000);
-		assertEquals(start, startTimeReturned);
-	}
 
-	private List<SendMessage> createSendMessageList(int howMany) {
-		List<SendMessage> sendMessageList = new ArrayList<>();
-		for (int i = 0; i <= howMany; i++) {
-			SendMessage sendMessage = new SendMessage();
-			sendMessage.setChatId((long) i);
-			sendMessage.setText("test");
-			sendMessageList.add(sendMessage);
-		}
-		return sendMessageList;
 	}
-
 
 	/**
 	 * For fun to see if any errors pop up

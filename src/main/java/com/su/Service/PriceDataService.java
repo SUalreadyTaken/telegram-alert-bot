@@ -5,11 +5,10 @@ import com.su.Repository.PriceDataRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @Transactional
@@ -28,7 +27,7 @@ public class PriceDataService {
 			priceData.getChatIds().add(chatId);
 			priceDataRepository.save(priceData);
 		} else {
-			priceDataRepository.save(new PriceData(price, new ArrayList<>(Collections.singletonList(chatId))));
+			priceDataRepository.save(new PriceData(price, Stream.of(chatId).collect(Collectors.toList())));
 		}
 	}
 
@@ -45,7 +44,7 @@ public class PriceDataService {
 		}
 	}
 
-	public void removeChatIdFromPrice(Double price, List<Integer> chatIdList) {
+	public void removeChatIdsFromPrice(Double price, List<Integer> chatIdList) {
 		Optional<PriceData> optionalPriceData = priceDataRepository.findByPrice(price);
 		if (optionalPriceData.isPresent()) {
 			PriceData priceData = optionalPriceData.get();
