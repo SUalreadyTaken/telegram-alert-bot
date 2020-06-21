@@ -144,7 +144,9 @@ public class CheckPrice {
 				return 0;
 			}
 
-			String JSON_STRING = new Scanner(connection.getInputStream(), "UTF-8").next();
+			Scanner s = new Scanner(connection.getInputStream(), "UTF-8");
+			String JSON_STRING = s.next();
+			s.close();
 			JSONArray jsonArray = new JSONArray(JSON_STRING);
 
 			if (!jsonArray.isEmpty()) {
