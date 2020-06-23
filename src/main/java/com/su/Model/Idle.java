@@ -6,22 +6,23 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "idle")
 public class Idle {
 
-	@Id
-	private String id;
+  @Id
+  private String id;
 
-	boolean alternative;
+  boolean alternative;
 
-	public Idle() {}
+  public Idle() {
+  }
 
-	public Idle(boolean alternative) {
-		this.alternative = alternative;
-	}
+  public Idle(boolean alternative) {
+    this.alternative = alternative;
+  }
 
-	public boolean isAlternative() {
-		return alternative;
-	}
+  public boolean isAlternative() {
+    return alternative;
+  }
 
-	public void setAlternative(boolean alternative) {
-		this.alternative = alternative;
-	}
+  public void setAlternative(boolean alternative) {
+    this.alternative = alternative;
+  }
 }

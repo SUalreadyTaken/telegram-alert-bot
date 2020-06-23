@@ -9,17 +9,18 @@ import java.io.StringReader;
 
 class UpdateToSend {
 
-	private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
-	Update createUpdate(int chatId, String text) throws IOException {
+  Update createUpdate(int chatId, String text) throws IOException {
 
-		String json = "{\"updateId\":666,\"message\":{\"messageId\":99,\"from\":{\"id\":" + chatId +",\"firstName\":\"Tester\"," +
-				"\"isBot\":false,\"languageCode\":\"en\"},\"date\":" + (System.currentTimeMillis() / 1000L) +",\"chat\":{\"id\":" + chatId + ",\"type\":\"private\"," +
-				"\"firstName\":\"Tester\"},\"text\":\"" + text + "\"}}";
+    String json = "{\"updateId\":666,\"message\":{\"messageId\":99,\"from\":{\"id\":" + chatId
+        + ",\"firstName\":\"Tester\"," + "\"isBot\":false,\"languageCode\":\"en\"},\"date\":"
+        + (System.currentTimeMillis() / 1000L) + ",\"chat\":{\"id\":" + chatId + ",\"type\":\"private\","
+        + "\"firstName\":\"Tester\"},\"text\":\"" + text + "\"}}";
 
-		Reader reader = new StringReader(json);
+    Reader reader = new StringReader(json);
 
-		return objectMapper.readValue(reader, Update.class);
-	}
+    return objectMapper.readValue(reader, Update.class);
+  }
 
 }

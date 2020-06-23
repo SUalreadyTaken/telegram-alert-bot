@@ -9,19 +9,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class IdleService {
 
-	private final IdleRepository idleRepository;
+  private final IdleRepository idleRepository;
 
-	public IdleService(IdleRepository idleRepository) {
-		this.idleRepository = idleRepository;
-	}
+  public IdleService(IdleRepository idleRepository) {
+    this.idleRepository = idleRepository;
+  }
 
-	public boolean getAlternativeBoolean() {
-		return idleRepository.findAll().get(0).isAlternative();
-	}
+  public boolean getAlternativeBoolean() {
+    return idleRepository.findAll().get(0).isAlternative();
+  }
 
-	public void switchAlternativeBoolean() {
-		Idle currentIdle = idleRepository.findAll().get(0);
-		currentIdle.setAlternative(!currentIdle.isAlternative());
-		idleRepository.save(currentIdle);
-	}
+  public void switchAlternativeBoolean() {
+    Idle currentIdle = idleRepository.findAll().get(0);
+    currentIdle.setAlternative(!currentIdle.isAlternative());
+    idleRepository.save(currentIdle);
+  }
 }

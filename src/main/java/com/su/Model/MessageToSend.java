@@ -8,16 +8,17 @@ import java.util.concurrent.LinkedBlockingQueue;
 @Component
 public class MessageToSend {
 
-    private BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
+  private BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
 
-    public MessageToSend() {}
+  public MessageToSend() {
+  }
 
-    public BlockingQueue<Message> getMessageQueue() {
-        return messageQueue;
-    }
+  public BlockingQueue<Message> getMessageQueue() {
+    return messageQueue;
+  }
 
-    public void setMessageQueue(BlockingQueue<Message> messageQueue) {
-        this.messageQueue = messageQueue;
-    }
+  public void setMessageQueue(BlockingQueue<Message> messageQueue) {
+    this.messageQueue = messageQueue;
+  }
 
 }

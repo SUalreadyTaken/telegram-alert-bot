@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface PriceDataRepository extends MongoRepository<PriceData, String> {
 
- 	Optional<PriceData> findByPrice(Double tmpPrice);
+  Optional<PriceData> findByPrice(Double tmpPrice);
 }

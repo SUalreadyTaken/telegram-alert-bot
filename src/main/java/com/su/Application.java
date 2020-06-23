@@ -14,17 +14,17 @@ import javax.annotation.PostConstruct;
 @EnableScheduling
 public class Application implements CommandLineRunner {
 
-    public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(Application.class, args);
+  }
 
-    @Override
-    public void run(String... args) {
+  @Override
+  public void run(String... args) {
 
-    }
+  }
 
-    @PostConstruct
-    public void start() {
-        ApiContextInitializer.init();
-    }
+  @PostConstruct
+  public void start() {
+    ApiContextInitializer.init();
+  }
 }
